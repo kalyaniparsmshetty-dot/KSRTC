@@ -1,0 +1,25 @@
+class student():
+    def __init__(self,name,marks):
+        self.name=name
+        self.marks=marks    
+    
+    def grades(self):
+        if self.marks >= 90:
+            return "A"
+        elif self.marks >=75:
+            return "B"
+        elif self.marks >=50:
+            return "C"
+        else:
+            return "Fail"
+        
+    def display(self):
+        grade = self.grades()
+        print(f"Name :{self.name}, Marks: {self.marks}, Grade :{grade}")
+
+students=[
+    student("Naveen",88),
+    student("Varun",55)
+]
+for student in students:
+    student.display()

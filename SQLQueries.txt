@@ -1,0 +1,146 @@
+CREATE DATABASE ksrtc;
+--DROP TABLE IF EXISTS users_roles;
+--DROP TABLE IF EXISTS roles;
+--DROP TABLE IF EXISTS users;
+
+CREATE TABLE users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  phone_number VARCHAR(20) NOT NULL,
+  email VARCHAR(256) NOT NULL,
+  password VARCHAR(64) NOT NULL,
+  first_name VARCHAR(25) NOT NULL,
+  last_name VARCHAR(25) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT pk_users PRIMARY KEY (id),
+  CONSTRAINT uq_users_email UNIQUE (email),
+  CONSTRAINT uq_users_phone_number UNIQUE (phone_number)
+);
+
+
+CREATE TABLE roles (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(45) NOT NULL,
+  CONSTRAINT pk_roles PRIMARY KEY (id),
+  CONSTRAINT uq_roles_name UNIQUE (name)
+);
+
+
+CREATE TABLE users_roles (
+  user_id BIGINT UNSIGNED NOT NULL,
+  role_id BIGINT UNSIGNED NOT NULL,
+  CONSTRAINT pk_users_roles PRIMARY KEY (user_id, role_id),
+  CONSTRAINT fk_users_roles_user FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT fk_users_roles_role FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+INSERT INTO roles (name) VALUES ('USER');
+INSERT INTO roles (name) VALUES ('ADMIN');
+
+CREATE TABLE `stops` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `stops` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+);
+
+INSERT INTO `stops` (`stops`) VALUES
+('cbt'),
+('old bus stand'),
+('hosur cross'),
+('kims'),
+('vidyanager'),
+('unakal'),
+('biridevarakoppa'),
+('apmc'),
+('navanager'),
+('iskcon temple'),
+('sdm'),
+('vidyagiri'),
+('jubilee circle');
+
+
+CREATE TABLE ticket_requests(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    `from` INT NOT NULL,
+    `to` INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    path VARCHAR(255) NOT NULL,
+    user_id BIGINT UNSIGNED,
+    status VARCHAR(50),
+    gender VARCHAR(20),
+    amount DECIMAL(10,2) DEFAULT NULL,  -- NEW COLUMN
+    result VARCHAR(255),  -- For receipt image path or processing result
+
+    -- Foreign key constraints
+    CONSTRAINT fk_v2_from_stop FOREIGN KEY (`from`) REFERENCES stops(id) ON DELETE CASCADE,
+    CONSTRAINT fk_v2_to_stop FOREIGN KEY (`to`) REFERENCES stops(id) ON DELETE CASCADE,
+    CONSTRAINT fk_v2_user_request FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+
+
+DELIMITER $$
+
+-- Trigger 1: Set status to 'inprogress' automatically
+CREATE TRIGGER trg_set_inprogress
+BEFORE UPDATE ON ticket_requests
+FOR EACH ROW
+BEGIN
+    IF OLD.status = 'initiated' AND NEW.result IS NULL THEN
+        SET NEW.status = 'inprogress';
+    END IF;
+END$$
+
+-- Trigger 2: Set status to 'completed' automatically
+CREATE TRIGGER trg_set_completed
+BEFORE UPDATE ON ticket_requests
+FOR EACH ROW
+BEGIN
+    IF OLD.status = 'inprogress' AND OLD.result IS NULL AND NEW.result IS NOT NULL THEN
+        SET NEW.status = 'completed';
+    END IF;
+END$$
+
+DELIMITER ;
+
+ CREATE TABLE password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    token VARCHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users_roles (user_id, role_id)
+VALUES (
+  (SELECT id FROM users WHERE email = 'naveenkitageri@gmail.com'),
+  (SELECT id FROM roles WHERE name = 'ADMIN')
+);
+
+SELECT u.email, r.name AS role
+FROM users u
+JOIN users_roles ur ON u.id = ur.user_id
+JOIN roles r ON ur.role_id = r.id
+WHERE u.email = 'naveenkitageri@gmail.com';
+
+CREATE TABLE contact_us (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ticket_id INT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status ENUM('pending', 'success', 'failed') DEFAULT 'pending',
+    paid_at DATETIME DEFAULT NULL,
+    FOREIGN KEY (ticket_id) REFERENCES ticket_requests(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
